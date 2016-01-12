@@ -1,9 +1,27 @@
 import os
 import sys
 import re
+import zipfile
+import fnmatch
+import biplist
 from dropbox import *
 
 CONFIG_OPTION_PATTERN = re.compile("(\\w+)(=(.*))")
+
+
+def to_readable_size(filesize):
+    scales = [
+        [1000 ** 5, "PB"],
+        [1000 ** 4, "TB"],
+        [1000 ** 3, "GB"],
+        [1000 ** 2, "MB"],
+        [1000 ** 1, "kB"],
+        [1000 ** 0, "B"]
+    ]
+    for scale in scales:
+        if filesize >= scale[0]:
+            break
+    return "%.2f%s" % (filesize / scale[0], scale[1])
 
 
 def validate_path(client, path):
@@ -12,6 +30,31 @@ def validate_path(client, path):
         return root_data["is_dir"]
     except:
         return None
+
+
+def get_ipa_file(path):
+    if not os.path.exists(path):
+        return None
+    for item in os.listdir(path):
+        if item.endswith(".ipa"):
+            return os.path.join(path, item)
+    return None
+
+
+def analyse_ipa(ipa_file):
+    with zipfile.ZipFile(ipa_file, "r") as ipa:
+        ipa_info = {}
+        files = ipa.namelist()
+        info_plist = fnmatch.filter(files, "Payload/*.app/Info.plist")[0]
+        info_plist_bin = ipa.read(info_plist)
+        try:
+            info = biplist.readPlistFromString(info_plist_bin)
+            ipa_info = info
+        except:
+            pass
+        ipa.close()
+        return ipa_info
+    return None
 
 
 def deploy(client, settings=None):
@@ -108,8 +151,7 @@ def run(args):
         first_time = True
         while (
             not binary_path or
-            not os.path.exists(binary_path) or
-            not os.path.isdir(binary_path)
+            (os.path.exists(binary_path) or not os.path.isdir(binary_path))
         ):
             if not first_time:
                 print("Invalid path")
@@ -141,8 +183,7 @@ def run(args):
     print("Validating output .ipa path [%s]..." % (binary_path))
     if (
         not binary_path or
-        not os.path.exists(binary_path) or
-        not os.path.isdir(binary_path)
+        (os.path.exists(binary_path) and not os.path.isdir(binary_path))
     ):
         if setup_mode:
             print("Invalid .ipa path.")
@@ -159,6 +200,51 @@ def run(args):
             print("error:Target path is not a directory")
         exit(1)
 
+    ipa_file = get_ipa_file(binary_path)
+    if not ipa_file:
+        if setup_mode:
+            print(".ipa file is not found. The deployment will be skipped.")
+        else:
+            print(
+                "warning:.ipa file is not found. " +
+                "The deployment will be skipped."
+            )
+        exit(0)
+    ipa_file_name = os.path.basename(ipa_file)
+    print("Analysing %s..." % (ipa_file_name))
+    ipa_info = analyse_ipa(ipa_file)
+    if ipa_info:
+        print("=" * 20)
+        print("Application Overview:")
+        print("%sApplication Name: %s" % (
+            " " * 4, ipa_info["CFBundleDisplayName"]
+        ))
+        print("%sApplication Version: %s" % (
+            " " * 4, ipa_info["CFBundleVersion"]
+        ))
+        print("Application Details:")
+        print("%sBundle Identifier: %s" % (
+            " " * 4, ipa_info["CFBundleIdentifier"]
+        ))
+        print("%sDevice Family: %s" % (
+            " " * 4, ", ".join([
+                "iPhone" if family == 1 else "iPad"
+                for family in ipa_info["UIDeviceFamily"]
+            ])
+        ))
+        print("%sMinimum OS Version: %s" % (
+            " " * 4, ipa_info["MinimumOSVersion"]
+        ))
+        print("%sSize: %s" % (
+            " " * 4, to_readable_size(os.path.getsize(ipa_file))
+        ))
+        print("=" * 20)
+    else:
+        if setup_mode:
+            print("%s is corrupted." % (ipa_file_name))
+        else:
+            print("error:%s is corrupted." % (ipa_file_name))
+        exit(1)
     deploy(client or DropboxClient(access_token), {
         "storage_path": storage_path
     })

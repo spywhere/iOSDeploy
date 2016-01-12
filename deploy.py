@@ -207,6 +207,17 @@ def deploy(client, settings):
 
 
 def run(args):
+    if "--help" in args:
+        print("Usage: python deploy.py [option] ...")
+        print("Options")
+        print("--binary-path <path>\t: Local path contains built .ipa files")
+        print("--clear\t\t\t: Remove previously store informations")
+        print("--help\t\t\t: Print this help message")
+        print("--setup\t\t\t: Enter setup mode when informations is outdated")
+        print("--storage-path <path>\t: Dropbox path to store .ipa files")
+        print("--store-app-info\t: Save app key and app secret")
+        exit(0)
+
     if "--clear" in args:
         os.remove(os.path.join(EXEC_DIR, ".iosdeploy"))
         exit(0)
@@ -214,8 +225,11 @@ def run(args):
     app_key = None
     app_secret = None
     setup_mode = "--setup" in args
+    store_app_info = "--store-app-info" in args
     while "--setup" in args:
         args.remove("--setup")
+    while "--store-app-info" in args:
+        args.remove("--store-app-info")
     access_token = None
     binary_path = None
     storage_path = "/Deployment"
@@ -257,7 +271,7 @@ def run(args):
             access_token = None
 
     while args:
-        if args[0] == "--storage_path":
+        if args[0] == "--storage-path":
             del args[0]
             if not args:
                 if setup_mode:
@@ -266,6 +280,15 @@ def run(args):
                     print("error:Expected path for storage path option")
                 exit(1)
             storage_path = args[0]
+        elif args[0] == "--binary-path":
+            del args[0]
+            if not args:
+                if setup_mode:
+                    print("Expected path for binary path option")
+                else:
+                    print("error:Expected path for binary path option")
+                exit(1)
+            binary_path = args[0]
         del args[0]
 
     if not setup_mode and not access_token:
@@ -319,8 +342,9 @@ def run(args):
             break
 
         config = open(os.path.join(EXEC_DIR, ".iosdeploy"), "w")
-        config.write("APP_KEY=%s\n" % (app_key))
-        config.write("APP_SECRET=%s\n" % (app_secret))
+        if store_app_info:
+            config.write("APP_KEY=%s\n" % (app_key))
+            config.write("APP_SECRET=%s\n" % (app_secret))
         config.write("ACCESS_TOKEN=%s\n" % (access_token))
         config.write("STORAGE_PATH=%s\n" % (storage_path))
         config.write("BINARY_PATH=%s\n" % (binary_path))

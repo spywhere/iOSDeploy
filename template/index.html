@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    </head>
+    <body>
+    	<div style="text-align:center;"><h1>MyMoSIT</h1></div>
+    	<ul>
+    		<li class="latest" style="background-color:#cfc;">Build 201601121742: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
+    	</ul>
+    	<ul>
+    		<li>Build 201601121657: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
+    	</ul>
+    	<ul>
+    		<li>Build 201601121534: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
+    	</ul>
+    	<ul>
+    		<li>Build 201601121202: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
+    	</ul>
+
+    	<script src="js/jquery.min.js" crossorigin="anonymous"></script>
+    	<script src="js/jquery.animate-colors-min.js" crossorigin="anonymous"></script>
+    	<script src="js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+    	<script>
+            function setCookie(cname, cvalue, exdays) {
+                var d = new Date();
+                d.setTime(d.getTime() + (exdays*24*60*60*1000));
+                var expires = "expires="+d.toUTCString();
+                document.cookie = cname + "=" + cvalue + "; " + expires;
+            }
+
+            function getCookie(cname) {
+                var name = cname + "=";
+                var ca = document.cookie.split(';');
+                for(var i=0; i<ca.length; i++) {
+                    var c = ca[i];
+                    while (c.charAt(0)==' ') c = c.substring(1);
+                    if (c.indexOf(name) == 0) return c.substring(name.length, c.length);
+                }
+                return "";
+            }
+
+
+            function dismissHighlight(){
+                var latestBuild = "2016011217422";
+                if(getCookie("latest") == latestBuild){
+                    // setCookie("latest", latestBuild, 1);
+	    			$(".latest").css("backgroundColor", "transparent");
+	    			return;
+	    		}
+				document.title = "Tab has been focus";
+				$(".latest").animate({
+					"backgroundColor": "transparent"
+				}, 10000);
+	    	}
+
+	    	if(document.hasFocus()){
+	    		dismissHighlight();
+    		}
+    		window.onfocus = function(){
+    			dismissHighlight();
+    		};
+    		setTimeout(function(){
+    			location.reload();
+    		}, 30000);
+    	</script>
+    </body>
+</html>

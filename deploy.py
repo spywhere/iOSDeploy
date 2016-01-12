@@ -59,6 +59,21 @@ def analyse_ipa(ipa_file):
 
 def deploy(client, settings=None):
     settings = settings or {}
+    storage_path = settings["storage_path"]
+    ipa_file = settings["ipa_file"]
+    ipa_file_name = settings["ipa_file_name"]
+    ipa_info = settings["ipa_info"]
+    print("Uploading %s..." % (ipa_file_name))
+    print(str(client.put_file(
+        "%s/%s/%s/%s" % (
+            storage_path,
+            ipa_info["CFBundleDisplayName"],
+            ipa_info["CFBundleVersion"],
+            ipa_file_name
+        ),
+        open(ipa_file, "r")
+    )))
+    print("Creating manifest.plist file for download...")
 
 
 def run(args):
@@ -246,7 +261,10 @@ def run(args):
             print("error:%s is corrupted." % (ipa_file_name))
         exit(1)
     deploy(client or DropboxClient(access_token), {
-        "storage_path": storage_path
+        "storage_path": storage_path,
+        "ipa_file": ipa_file,
+        "ipa_file_name": ipa_file_name,
+        "ipa_info": ipa_info
     })
 
 

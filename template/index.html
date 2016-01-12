@@ -2,28 +2,18 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <link rel="stylesheet" href="css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css">
+        <title><!-- [CFBundleDisplayName] --></title>
     </head>
     <body>
-    	<div style="text-align:center;"><h1>MyMoSIT</h1></div>
-    	<ul>
-    		<li class="latest" style="background-color:#cfc;">Build 201601121742: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
-    	</ul>
-    	<ul>
-    		<li>Build 201601121657: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
-    	</ul>
-    	<ul>
-    		<li>Build 201601121534: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
-    	</ul>
-    	<ul>
-    		<li>Build 201601121202: <a class="btn btn-primary btn-xs" href"#">Install</a></li>
-    	</ul>
+        <div style="text-align:center;"><h1><!-- [CFBundleDisplayName] --></h1></div>
+        <!-- [BUILDS] -->
 
-    	<script src="js/jquery.min.js" crossorigin="anonymous"></script>
-    	<script src="js/jquery.animate-colors-min.js" crossorigin="anonymous"></script>
-    	<script src="js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/jquery.color-animation/1/mainfile"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/js/bootstrap.min.js"></script>
 
-    	<script>
+        <script>
             function setCookie(cname, cvalue, exdays) {
                 var d = new Date();
                 d.setTime(d.getTime() + (exdays*24*60*60*1000));
@@ -42,29 +32,28 @@
                 return "";
             }
 
-
             function dismissHighlight(){
-                var latestBuild = "2016011217422";
+                var latestBuild = "<!-- [CFBundleVersion] -->";
                 if(getCookie("latest") == latestBuild){
-                    // setCookie("latest", latestBuild, 1);
-	    			$(".latest").css("backgroundColor", "transparent");
-	    			return;
-	    		}
-				document.title = "Tab has been focus";
-				$(".latest").animate({
-					"backgroundColor": "transparent"
-				}, 10000);
-	    	}
+                    $(".latest").css("backgroundColor", "transparent");
+                    return;
+                }else{
+                    setCookie("latest", latestBuild, 1);
+                }
+                $(".latest").animate({
+                    "backgroundColor": "transparent"
+                }, 10000);
+            }
 
-	    	if(document.hasFocus()){
-	    		dismissHighlight();
-    		}
-    		window.onfocus = function(){
-    			dismissHighlight();
-    		};
-    		setTimeout(function(){
-    			location.reload();
-    		}, 30000);
-    	</script>
+            if(document.hasFocus()){
+                dismissHighlight();
+            }
+            window.onfocus = function(){
+                dismissHighlight();
+            };
+            setTimeout(function(){
+                location.reload();
+            }, 30000);
+        </script>
     </body>
 </html>

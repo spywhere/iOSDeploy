@@ -7,6 +7,10 @@ import biplist
 from dropbox import *
 
 CONFIG_OPTION_PATTERN = re.compile("(\\w+)(=(.*))")
+MACRO_PATTERN = re.compile("<!--\\s*\\[(\\w+)]\\s*-->")
+
+EXEC_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKING_DIR = os.getcwd()
 
 
 def to_readable_size(filesize):
@@ -57,28 +61,154 @@ def analyse_ipa(ipa_file):
     return None
 
 
-def deploy(client, settings=None):
-    settings = settings or {}
+def parse_macro(match, ipa_info=None, build_info=None):
+    ipa_info = ipa_info or {}
+    build_info = build_info or {}
+    if match.group(1) in build_info:
+        return build_info[match.group(1)]
+    elif match.group(1) in ipa_info:
+        return ipa_info[match.group(1)]
+    else:
+        return ""
+
+
+def deploy(client, settings):
+    setup_mode = settings["setup_mode"]
     storage_path = settings["storage_path"]
     ipa_file = settings["ipa_file"]
     ipa_file_name = settings["ipa_file_name"]
     ipa_info = settings["ipa_info"]
+    tmp_file = os.path.join(EXEC_DIR, "tmpfile")
+    template = {
+        "index": "index.html",
+        "item": "item.html",
+        "new-item": "new-item.html",
+        "manifest": "manifest.plist"
+    }
+    for key in template:
+        template[key] = os.path.join(EXEC_DIR, "template", template[key])
+        if key != "new-item" and not os.path.exists(template[key]):
+            if setup_mode:
+                print("Template file for \"%s\" is not found" % (key))
+            else:
+                print("error:Template file for \"%s\" is not found" % (key))
+                exit(1)
+    user_info = client.account_info()
+    public_url = "https://dl.dropboxusercontent.com/u/%s" % (user_info["uid"])
+    app_url = "%s/%s" % (storage_path, ipa_info["CFBundleDisplayName"])
+    ipa_url = "%s/%s/%s" % (
+        app_url,
+        ipa_info["CFBundleVersion"],
+        ipa_file_name
+    )
+    manifest_url = "%s/%s/%s" % (
+        app_url,
+        ipa_info["CFBundleVersion"],
+        "manifest.plist"
+    )
+
     print("Uploading %s..." % (ipa_file_name))
-    print(str(client.put_file(
-        "%s/%s/%s/%s" % (
-            storage_path,
-            ipa_info["CFBundleDisplayName"],
-            ipa_info["CFBundleVersion"],
-            ipa_file_name
-        ),
-        open(ipa_file, "r")
-    )))
-    print("Creating manifest.plist file for download...")
+    client.put_file("/Public" + ipa_url, open(ipa_file, "r"))
+
+    print("Creating manifest.plist file...")
+    template_manifest_file = open(template["manifest"], "r")
+    template_manifest = template_manifest_file.read()
+    template_manifest_file.close()
+    build_info = {
+        "IPA_URL": public_url + ipa_url,
+        "MANIFEST_URL": public_url + manifest_url
+    }
+    template_manifest = MACRO_PATTERN.sub(
+        lambda m: parse_macro(m, ipa_info, build_info),
+        template_manifest
+    )
+    manifest = open(tmp_file, "w")
+    manifest.write(template_manifest)
+    manifest.close()
+
+    print("Uploading manifest.plist...")
+    client.put_file("/Public" + manifest_url, open(tmp_file, "r"))
+    os.remove(tmp_file)
+
+    print("Generating builds info...")
+    public_app_url = "/Public" + app_url
+    app_dir_info = client.metadata(public_app_url)
+
+    builds = []
+    contents = app_dir_info["contents"]
+    contents.reverse()
+    for entry in contents:
+        if not entry["is_dir"]:
+            continue
+        bundle_version = entry["path"][len(public_app_url) + 1:]
+        if (
+            bundle_version == ipa_info["CFBundleVersion"] and
+            os.path.exists(template["new-item"])
+        ):
+            template_build_file = open(template["new-item"], "r")
+            template_build = template_build_file.read()
+            template_build_file.close()
+
+            build_info["DISPLAY_NAME"] = ipa_info["CFBundleDisplayName"]
+            build_info["BUNDLE_VERSION"] = ipa_info["CFBundleVersion"]
+            build_info["MODIFIED"] = entry["modified"]
+
+            template_build = MACRO_PATTERN.sub(
+                lambda m: parse_macro(m, ipa_info, build_info),
+                template_build
+            )
+
+            builds = [template_build] + builds
+            continue
+        build = {
+            "DISPLAY_NAME": ipa_info["CFBundleDisplayName"],
+            "BUNDLE_VERSION": bundle_version,
+            "MANIFEST_URL": public_url + app_url + "/%s/manifest.plist" % (
+                bundle_version
+            ),
+            "MODIFIED": entry["modified"]
+        }
+
+        template_build_file = open(template["item"], "r")
+        template_build = template_build_file.read()
+        template_build_file.close()
+
+        template_build = MACRO_PATTERN.sub(
+            lambda m: parse_macro(m, build),
+            template_build
+        )
+
+        builds.append(template_build)
+
+    print("Creating HTML page...")
+    template_index_file = open(template["index"], "r")
+    template_index = template_index_file.read()
+    template_index_file.close()
+
+    build_info = {
+        "BUILDS": "".join(builds)
+    }
+
+    template_index = MACRO_PATTERN.sub(
+        lambda m: parse_macro(m, ipa_info, build_info),
+        template_index
+    )
+
+    index = open(tmp_file, "w")
+    index.write(template_index)
+    index.close()
+
+    print("Uploading HTML page...")
+    client.put_file("/Public" + app_url + "/index.html", open(tmp_file, "r"))
+    os.remove(tmp_file)
+
+    print("=" * 20)
+    print("Deployment complete: %s" % (public_url + app_url + "/index.html"))
 
 
 def run(args):
     if "--clear" in args:
-        os.remove(".iosdeploy")
+        os.remove(os.path.join(EXEC_DIR, ".iosdeploy"))
         exit(0)
 
     app_key = None
@@ -91,8 +221,8 @@ def run(args):
     storage_path = "/Deployment"
     client = None
 
-    if os.path.exists(".iosdeploy"):
-        config = open(".iosdeploy", "r")
+    if os.path.exists(os.path.join(EXEC_DIR, ".iosdeploy")):
+        config = open(os.path.join(EXEC_DIR, ".iosdeploy"), "r")
 
         for line in config.readlines():
             match = CONFIG_OPTION_PATTERN.search(line)
@@ -166,15 +296,18 @@ def run(args):
         first_time = True
         while (
             not binary_path or
-            (os.path.exists(binary_path) or not os.path.isdir(binary_path))
+            (os.path.exists(binary_path) and not os.path.isdir(binary_path))
         ):
             if not first_time:
                 print("Invalid path")
             binary_path = raw_input("Enter path contains .ipa files: ")
+            first_time = False
 
         client = DropboxClient(access_token)
         while True:
-            path = raw_input("Enter Dropbox path to store .ipa files [%s]: " % (storage_path))
+            path = raw_input(
+                "Enter Dropbox path to store .ipa files [%s]: " % (storage_path)
+            )
 
             path_validation = validate_path(client, path)
             if path_validation is not None and not path_validation:
@@ -185,7 +318,7 @@ def run(args):
                 storage_path = path
             break
 
-        config = open(".iosdeploy", "w")
+        config = open(os.path.join(EXEC_DIR, ".iosdeploy"), "w")
         config.write("APP_KEY=%s\n" % (app_key))
         config.write("APP_SECRET=%s\n" % (app_secret))
         config.write("ACCESS_TOKEN=%s\n" % (access_token))
@@ -206,8 +339,8 @@ def run(args):
             print("error:Invalid .ipa path.")
         exit(1)
 
-    print("Validating storage path [%s]..." % (storage_path))
-    path_validation = validate_path(client, storage_path)
+    print("Validating storage path [%s]..." % ("/Public" + storage_path))
+    path_validation = validate_path(client, "/Public" + storage_path)
     if path_validation is not None and not path_validation:
         if setup_mode:
             print("Target path is not a directory")
@@ -261,6 +394,7 @@ def run(args):
             print("error:%s is corrupted." % (ipa_file_name))
         exit(1)
     deploy(client or DropboxClient(access_token), {
+        "setup_mode": setup_mode,
         "storage_path": storage_path,
         "ipa_file": ipa_file,
         "ipa_file_name": ipa_file_name,

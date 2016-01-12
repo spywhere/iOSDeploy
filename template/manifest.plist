@@ -17,13 +17,13 @@
 			<key>metadata</key>
 			<dict>
 				<key>bundle-identifier</key>
-				<string><!-- [BUNDLE_IDENTIFIER] --></string>
+				<string><!-- [CFBundleIdentifier] --></string>
 				<key>bundle-version</key>
-				<string><!-- [BUNDLE_VERSION] --></string>
+				<string><!-- [CFbundleVersion] --></string>
 				<key>kind</key>
 				<string>software</string>
 				<key>title</key>
-				<string><!-- [DISPLAY_NAME] --></string>
+				<string><!-- [CFBundleDisplayName] --></string>
 			</dict>
 		</dict>
 	</array>

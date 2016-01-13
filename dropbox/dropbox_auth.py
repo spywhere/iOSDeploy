@@ -3,8 +3,8 @@ from .dropbox_connection import *
 from .dropbox_util import *
 
 class DropboxAuth():
-    def __init__(self, app_key, app_secret):
-        self.connection = DropboxConnection()
+    def __init__(self, app_key, app_secret, prefix_path=None):
+        self.connection = DropboxConnection(prefix_path)
         self.app_key = app_key
         self.app_secret = app_secret
 

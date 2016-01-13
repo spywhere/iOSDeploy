@@ -2,15 +2,17 @@ import re
 import os
 import urllib
 
-class DropboxUtil():
+
+class DropboxUtil:
     API_VERSION = 1
     WEB_HOST = "www.dropbox.com"
     API_HOST = "api.dropbox.com"
     API_CONTENT_HOST = "api-content.dropbox.com"
 
     @staticmethod
-    def get_cert_file():
-        return "certs/dropbox.certification"
+    def get_cert_file(prefix=None):
+        prefix = prefix or ""
+        return os.path.join(prefix, "certs/dropbox.certification")
 
     @staticmethod
     def build_path(target, params=None):

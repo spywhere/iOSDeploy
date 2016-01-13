@@ -219,7 +219,7 @@ def run(args):
         exit(0)
 
     if "--clear" in args:
-        os.remove(os.path.join(EXEC_DIR, ".iosdeploy"))
+        os.remove(os.path.join(WORKING_DIR, ".iosdeploy"))
         exit(0)
 
     app_key = None
@@ -235,8 +235,8 @@ def run(args):
     storage_path = "/Deployment"
     client = None
 
-    if os.path.exists(os.path.join(EXEC_DIR, ".iosdeploy")):
-        config = open(os.path.join(EXEC_DIR, ".iosdeploy"), "r")
+    if os.path.exists(os.path.join(WORKING_DIR, ".iosdeploy")):
+        config = open(os.path.join(WORKING_DIR, ".iosdeploy"), "r")
 
         for line in config.readlines():
             match = CONFIG_OPTION_PATTERN.search(line)
@@ -257,7 +257,7 @@ def run(args):
                     binary_path = value
         config.close()
 
-        client = DropboxClient(access_token)
+        client = DropboxClient(access_token, EXEC_DIR)
         try:
             print("Validating access token...")
             client.account_info()
@@ -305,14 +305,14 @@ def run(args):
                 app_key = raw_input("Enter Dropbox app key: ")
             if not app_secret:
                 app_secret = raw_input("Enter Dropbox app secret: ")
-            auth = DropboxAuth(app_key, app_secret)
+            auth = DropboxAuth(app_key, app_secret, EXEC_DIR)
             print("Get authorization code from: " + auth.get_authorize_url())
             code = raw_input("Enter authorization code: ")
             try:
                 access_token, user_id = auth.authorize(code)
                 break
-            except:
-                print("Invalid authorization code")
+            except Exception as e:
+                print("Invalid authorization code: %s" % (e))
                 continue
         access_token = str(access_token)
 
@@ -326,7 +326,7 @@ def run(args):
             binary_path = raw_input("Enter path contains .ipa files: ")
             first_time = False
 
-        client = DropboxClient(access_token)
+        client = DropboxClient(access_token, EXEC_DIR)
         while True:
             path = raw_input(
                 "Enter Dropbox path to store .ipa files [%s]: " % (storage_path)
@@ -341,7 +341,7 @@ def run(args):
                 storage_path = path
             break
 
-        config = open(os.path.join(EXEC_DIR, ".iosdeploy"), "w")
+        config = open(os.path.join(WORKING_DIR, ".iosdeploy"), "w")
         if store_app_info:
             config.write("APP_KEY=%s\n" % (app_key))
             config.write("APP_SECRET=%s\n" % (app_secret))
@@ -417,7 +417,7 @@ def run(args):
         else:
             print("error:%s is corrupted." % (ipa_file_name))
         exit(1)
-    deploy(client or DropboxClient(access_token), {
+    deploy(client or DropboxClient(access_token, EXEC_DIR), {
         "setup_mode": setup_mode,
         "storage_path": storage_path,
         "ipa_file": ipa_file,

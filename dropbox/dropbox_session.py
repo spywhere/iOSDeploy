@@ -1,6 +1,7 @@
 from .dropbox_connection import *
 
-class DropboxSession():
+
+class DropboxSession:
     def __init__(self, access_token):
         self.access_token = access_token
         self.root = "auto"

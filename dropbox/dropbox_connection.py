@@ -3,7 +3,9 @@ import socket
 from urllib3 import *
 from dropbox.dropbox_util import *
 
-class DropboxConnection():
+class DropboxConnection:
+    def __init__(self, prefix_path=None):
+        self.prefix_path = prefix_path
 
     def request(self, method, url, params=None, body=None, headers=None, raw_response=False):
         try:
@@ -14,7 +16,7 @@ class DropboxConnection():
                 block=False,
                 timeout=60.0,
                 cert_reqs=ssl.CERT_REQUIRED,
-                ca_certs=DropboxUtil.get_cert_file(),
+                ca_certs=DropboxUtil.get_cert_file(self.prefix_path),
                 ssl_version=ssl.PROTOCOL_TLSv1,
             )
         except (ImportError):

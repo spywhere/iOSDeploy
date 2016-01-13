@@ -3,11 +3,13 @@ from .dropbox_connection import *
 from .dropbox_session import *
 from .dropbox_util import *
 
+
 OAUTH2_ACCESS_TOKEN_PATTERN = re.compile(r"\A[-_~/A-Za-z0-9\.\+]+=*\Z")
 
-class DropboxClient():
-    def __init__(self, access_token):
-        self.connection = DropboxConnection()
+
+class DropboxClient:
+    def __init__(self, access_token, prefix_path=None):
+        self.connection = DropboxConnection(prefix_path)
         if type(access_token) == str:
             if not OAUTH2_ACCESS_TOKEN_PATTERN.match(access_token):
                 raise ValueError("invalid format for oauth2_access_token: %r" % (access_token))

@@ -95,7 +95,12 @@ def deploy(client, settings):
                 exit(1)
     user_info = client.account_info()
     public_url = "https://dl.dropboxusercontent.com/u/%s" % (user_info["uid"])
-    app_url = "%s/%s" % (storage_path, ipa_info["CFBundleDisplayName"])
+    app_name = (
+        ipa_info["CFBundleDisplayName"]
+        if "CFBundleDisplayName" in ipa_info
+        else ipa_info["CFBundleName"]
+    )
+    app_url = "%s/%s" % (storage_path, app_name)
     ipa_url = "%s/%s/%s" % (
         app_url,
         ipa_info["CFBundleVersion"],
@@ -149,7 +154,7 @@ def deploy(client, settings):
             template_build = template_build_file.read()
             template_build_file.close()
 
-            build_info["DISPLAY_NAME"] = ipa_info["CFBundleDisplayName"]
+            build_info["DISPLAY_NAME"] = app_name
             build_info["BUNDLE_VERSION"] = ipa_info["CFBundleVersion"]
             build_info["MODIFIED"] = entry["modified"]
 
@@ -161,7 +166,7 @@ def deploy(client, settings):
             builds = [template_build] + builds
             continue
         build = {
-            "DISPLAY_NAME": ipa_info["CFBundleDisplayName"],
+            "DISPLAY_NAME": app_name,
             "BUNDLE_VERSION": bundle_version,
             "MANIFEST_URL": public_url + app_url + "/%s/manifest.plist" % (
                 bundle_version
@@ -385,11 +390,16 @@ def run(args):
     ipa_file_name = os.path.basename(ipa_file)
     print("Analysing %s..." % (ipa_file_name))
     ipa_info = analyse_ipa(ipa_file)
+    app_name = (
+        ipa_info["CFBundleDisplayName"]
+        if "CFBundleDisplayName" in ipa_info
+        else ipa_info["CFBundleName"]
+    )
     if ipa_info:
         print("=" * 20)
         print("Application Overview:")
         print("%sApplication Name: %s" % (
-            " " * 4, ipa_info["CFBundleDisplayName"]
+            " " * 4, app_name
         ))
         print("%sApplication Version: %s" % (
             " " * 4, ipa_info["CFBundleVersion"]

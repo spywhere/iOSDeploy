@@ -154,7 +154,7 @@ def deploy(client, settings):
             template_build = template_build_file.read()
             template_build_file.close()
 
-            build_info["DISPLAY_NAME"] = app_name
+            build_info["APP_NAME"] = app_name
             build_info["BUNDLE_VERSION"] = ipa_info["CFBundleVersion"]
             build_info["MODIFIED"] = entry["modified"]
 
@@ -166,7 +166,7 @@ def deploy(client, settings):
             builds = [template_build] + builds
             continue
         build = {
-            "DISPLAY_NAME": app_name,
+            "APP_NAME": app_name,
             "BUNDLE_VERSION": bundle_version,
             "MANIFEST_URL": public_url + app_url + "/%s/manifest.plist" % (
                 bundle_version
@@ -191,6 +191,7 @@ def deploy(client, settings):
     template_index_file.close()
 
     build_info = {
+	    "APP_NAME": app_name,
         "BUILDS": "".join(builds)
     }
 

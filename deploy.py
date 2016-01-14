@@ -120,6 +120,7 @@ def deploy(client, settings):
     template_manifest = template_manifest_file.read()
     template_manifest_file.close()
     build_info = {
+        "APP_NAME": app_name,
         "IPA_URL": public_url + ipa_url,
         "MANIFEST_URL": public_url + manifest_url
     }
@@ -191,7 +192,7 @@ def deploy(client, settings):
     template_index_file.close()
 
     build_info = {
-	    "APP_NAME": app_name,
+        "APP_NAME": app_name,
         "BUILDS": "".join(builds)
     }
 

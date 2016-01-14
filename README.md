@@ -2,7 +2,11 @@
 Python script to deploy an ad-hoc iOS application to Dropbox service
 
 ### Installation
-Place all the files in this repository in your iOS project directory and within a `iosdeploy` folder
+In your iOS project directory, run...
+
+```
+git clone https://github.com/spywhere/iOSDeploy iosdeploy
+```
 
 ### Requirments
 - OS X 10.9+

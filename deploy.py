@@ -262,6 +262,7 @@ def run(args):
     app_secret = None
     setup_mode = "--setup" in args
     store_app_info = "--store-app-info" in args
+    global DUMP_JSON
     DUMP_JSON = "--json" in args
     while "--json" in args:
         args.remove("--json")

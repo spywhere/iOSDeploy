@@ -13,6 +13,8 @@ MACRO_PATTERN = re.compile("<!--\\s*\\[(\\w+)]\\s*-->")
 EXEC_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKING_DIR = os.getcwd()
 
+DUMP_JSON = False
+
 
 def to_readable_size(filesize):
     scales = [
@@ -82,9 +84,10 @@ def dump_error(error_message):
 
 
 def dump_result(result):
-    output_file = open(os.path.join(WORKING_DIR, "output.json"), "w")
-    json.dump(result, output_file)
-    output_file.close()
+    if DUMP_JSON:
+        output_file = open(os.path.join(WORKING_DIR, "output.json"), "w")
+        json.dump(result, output_file)
+        output_file.close()
 
 
 def deploy(client, settings):
@@ -259,6 +262,9 @@ def run(args):
     app_secret = None
     setup_mode = "--setup" in args
     store_app_info = "--store-app-info" in args
+    DUMP_JSON = "--json" in args
+    while "--json" in args:
+        args.remove("--json")
     while "--setup" in args:
         args.remove("--setup")
     while "--store-app-info" in args:

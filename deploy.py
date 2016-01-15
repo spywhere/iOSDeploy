@@ -4,6 +4,7 @@ import re
 import zipfile
 import fnmatch
 import biplist
+import json
 from dropbox import *
 
 CONFIG_OPTION_PATTERN = re.compile("(\\w+)(=(.*))")
@@ -72,6 +73,20 @@ def parse_macro(match, ipa_info=None, build_info=None):
         return ""
 
 
+def dump_error(error_message):
+    print("error:%s" % (error_message))
+    error = {
+        "error": error_message
+    }
+    dump_result(error)
+
+
+def dump_result(result):
+    output_file = open(os.path.join(WORKING_DIR, "output.json"), "w")
+    json.dump(result, output_file)
+    output_file.close()
+
+
 def deploy(client, settings):
     setup_mode = settings["setup_mode"]
     storage_path = settings["storage_path"]
@@ -91,7 +106,7 @@ def deploy(client, settings):
             if setup_mode:
                 print("Template file for \"%s\" is not found" % (key))
             else:
-                print("error:Template file for \"%s\" is not found" % (key))
+                dump_error("Template file for \"%s\" is not found" % (key))
                 exit(1)
     user_info = client.account_info()
     public_url = "https://dl.dropboxusercontent.com/u/%s" % (user_info["uid"])
@@ -210,6 +225,16 @@ def deploy(client, settings):
     os.remove(tmp_file)
 
     print("=" * 20)
+    result = {
+        "name": app_name,
+        "ipa_url": public_url + ipa_url,
+        "manifest_url": public_url + manifest_url,
+        "ipa_file_name": ipa_file_name,
+        "app_url": public_url + app_url,
+        "deploy_url": public_url + app_url + "/index.html"
+    }
+    result.update(ipa_info)
+    dump_result(result)
     print("Deployment complete: %s" % (public_url + app_url + "/index.html"))
 
 
@@ -220,6 +245,7 @@ def run(args):
         print("--binary-path <path>\t: Local path contains built .ipa files")
         print("--clear\t\t\t: Remove previously store informations")
         print("--help\t\t\t: Print this help message")
+        print("--json\t\t\t: Generate output as json file")
         print("--setup\t\t\t: Enter setup mode when informations is outdated")
         print("--storage-path <path>\t: Dropbox path to store .ipa files")
         print("--store-app-info\t: Save app key and app secret")
@@ -272,7 +298,7 @@ def run(args):
             if setup_mode:
                 print("Access token has expired")
             else:
-                print("error:Previous access token has expired")
+                dump_error("Previous access token has expired")
                 exit(1)
             client = None
             access_token = None
@@ -284,7 +310,7 @@ def run(args):
                 if setup_mode:
                     print("Expected path for storage path option")
                 else:
-                    print("error:Expected path for storage path option")
+                    dump_error("Expected path for storage path option")
                 exit(1)
             storage_path = args[0]
         elif args[0] == "--binary-path":
@@ -293,13 +319,13 @@ def run(args):
                 if setup_mode:
                     print("Expected path for binary path option")
                 else:
-                    print("error:Expected path for binary path option")
+                    dump_error("Expected path for binary path option")
                 exit(1)
             binary_path = args[0]
         del args[0]
 
     if not setup_mode and not access_token:
-        print(
+        dump_error(
             "error:iOSDeploy setup required. " +
             "Please run this script using \"python deploy.py --setup\"" +
             " in the Terminal."
@@ -367,7 +393,7 @@ def run(args):
         if setup_mode:
             print("Invalid .ipa path.")
         else:
-            print("error:Invalid .ipa path.")
+            dump_error("Invalid .ipa path.")
         exit(1)
 
     print("Validating storage path [%s]..." % ("/Public" + storage_path))
@@ -376,7 +402,7 @@ def run(args):
         if setup_mode:
             print("Target path is not a directory")
         else:
-            print("error:Target path is not a directory")
+            dump_error("Target path is not a directory")
         exit(1)
 
     ipa_file = get_ipa_file(binary_path)
@@ -427,7 +453,7 @@ def run(args):
         if setup_mode:
             print("%s is corrupted." % (ipa_file_name))
         else:
-            print("error:%s is corrupted." % (ipa_file_name))
+            dump_error("%s is corrupted." % (ipa_file_name))
         exit(1)
     deploy(client or DropboxClient(access_token, EXEC_DIR), {
         "setup_mode": setup_mode,

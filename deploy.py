@@ -4,6 +4,8 @@ import re
 import zipfile
 import fnmatch
 import biplist
+import datetime
+import time
 import json
 from dropbox import *
 
@@ -90,6 +92,16 @@ def dump_result(result):
         output_file.close()
 
 
+def timestamp_format(timestamp):
+    return datetime.datetime.fromtimestamp(timestamp).strftime(
+        "%a, %d %b %Y %H:%M:%S"
+    )
+
+
+def upload_file(client, remote_path, local_path):
+    client.put_file("/Public" + remote_path, open(local_path, "r"))
+
+
 def deploy(client, settings):
     setup_mode = settings["setup_mode"]
     storage_path = settings["storage_path"]
@@ -119,19 +131,23 @@ def deploy(client, settings):
         else ipa_info["CFBundleName"]
     )
     app_url = "%s/%s" % (storage_path, app_name)
-    ipa_url = "%s/%s/%s" % (
+    ipa_url = "%s/%s-%s-%d/%s" % (
         app_url,
+        ipa_info["CFBundleShortVersionString"],
         ipa_info["CFBundleVersion"],
+        time.time(),
         ipa_file_name
     )
-    manifest_url = "%s/%s/%s" % (
+    manifest_url = "%s/%s-%s-%d/%s" % (
         app_url,
+        ipa_info["CFBundleShortVersionString"],
         ipa_info["CFBundleVersion"],
+        time.time(),
         "manifest.plist"
     )
 
     print("Uploading %s..." % (ipa_file_name))
-    client.put_file("/Public" + ipa_url, open(ipa_file, "r"))
+    upload_file(client, ipa_url, ipa_file)
 
     print("Creating manifest.plist file...")
     template_manifest_file = open(template["manifest"], "r")
@@ -151,7 +167,7 @@ def deploy(client, settings):
     manifest.close()
 
     print("Uploading manifest.plist...")
-    client.put_file("/Public" + manifest_url, open(tmp_file, "r"))
+    upload_file(client, manifest_url, tmp_file)
     os.remove(tmp_file)
 
     print("Generating builds info...")
@@ -164,9 +180,9 @@ def deploy(client, settings):
     for entry in contents:
         if not entry["is_dir"]:
             continue
-        bundle_version = entry["path"][len(public_app_url) + 1:]
+        path_name = entry["path"][len(public_app_url) + 1:]
         if (
-            bundle_version == ipa_info["CFBundleVersion"] and
+            path_name == ipa_info["CFBundleVersion"] and
             os.path.exists(template["new-item"])
         ):
             template_build_file = open(template["new-item"], "r")
@@ -184,13 +200,26 @@ def deploy(client, settings):
 
             builds = [template_build] + builds
             continue
+        
+        matches = re.search("([\\d.]+)-(\\w+)-(\\w+)", path_name)
+        if matches:
+            bundle_version_short = matches.group(1)
+            bundle_version = matches.group(2)
+            timestamp = matches.group(3)
+            modified_date = timestamp_format(float(timestamp))
+        else:
+            bundle_version_short = ""
+            bundle_version = path_name
+            modified_date = entry["modified"]
+        
         build = {
             "APP_NAME": app_name,
             "BUNDLE_VERSION": bundle_version,
+            "BUNDLE_VERSION_SHORT": bundle_version_short,
             "MANIFEST_URL": public_url + app_url + "/%s/manifest.plist" % (
-                bundle_version
+                path_name
             ),
-            "MODIFIED": entry["modified"]
+            "MODIFIED": modified_date
         }
 
         template_build_file = open(template["item"], "r")
@@ -224,7 +253,7 @@ def deploy(client, settings):
     index.close()
 
     print("Uploading HTML page...")
-    client.put_file("/Public" + app_url + "/index.html", open(tmp_file, "r"))
+    upload_file(client, app_url + "/index.html", tmp_file)
     os.remove(tmp_file)
 
     print("=" * 20)
@@ -252,6 +281,7 @@ def run(args):
         print("--setup\t\t\t: Enter setup mode when informations is outdated")
         print("--storage-path <path>\t: Dropbox path to store .ipa files")
         print("--store-app-info\t: Save app key and app secret")
+        print("--upload-file <path>\t: Directly upload file to Dropbox")
         exit(0)
 
     if "--clear" in args:
@@ -272,6 +302,7 @@ def run(args):
         args.remove("--store-app-info")
     access_token = None
     binary_path = None
+    upload_file_path = None
     storage_path = "/Deployment"
     client = None
 
@@ -329,6 +360,15 @@ def run(args):
                     dump_error("Expected path for binary path option")
                 exit(1)
             binary_path = args[0]
+        elif args[0] == "--upload-file":
+            del args[0]
+            if not args:
+                if setup_mode:
+                    print("Expected path for upload file option")
+                else:
+                    dump_error("Expected path for upload file option")
+                exit(1)
+            upload_file_path = args[0]
         del args[0]
 
     if not setup_mode and not access_token:
@@ -391,6 +431,20 @@ def run(args):
         config.close()
         print("Setup finished")
         exit(0)
+
+    if upload_file_path:
+        if not os.path.exists(upload_file_path):
+            print("Upload file %s is not found" % (
+                os.path.basename(upload_file_path)
+            ))
+            return
+        print("Uploading %s..." % (os.path.basename(upload_file_path)))
+        upload_file(
+            client or DropboxClient(access_token, EXEC_DIR),
+            "%s/%s" % (storage_path, os.path.basename(upload_file_path)),
+            upload_file_path
+        )
+        return
 
     print("Validating output .ipa path [%s]..." % (binary_path))
     if (

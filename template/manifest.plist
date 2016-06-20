@@ -19,7 +19,7 @@
 				<key>bundle-identifier</key>
 				<string><!-- [CFBundleIdentifier] --></string>
 				<key>bundle-version</key>
-				<string><!-- [CFbundleVersion] --></string>
+				<string><!-- [CFBundleVersion] --></string>
 				<key>kind</key>
 				<string>software</string>
 				<key>title</key>

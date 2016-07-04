@@ -4,7 +4,7 @@ import urllib
 
 
 class DropboxUtil:
-    API_VERSION = 1
+    API_VERSION = 2
     WEB_HOST = "www.dropbox.com"
     API_HOST = "api.dropbox.com"
     API_CONTENT_HOST = "api-content.dropbox.com"
@@ -15,18 +15,25 @@ class DropboxUtil:
         return os.path.join(prefix, "certs/dropbox.certification")
 
     @staticmethod
-    def build_path(target, params=None):
+    def build_path(target, prefix=True, params=None):
         target_path = urllib.quote(target)
         params = params or {}
         params = params.copy()
         if params:
-            return "/%s%s?%s" % (DropboxUtil.API_VERSION, target_path, urllib.urlencode(params))
+            return "%s%s?%s" % (
+                "/" + str(DropboxUtil.API_VERSION) if prefix else "",
+                target_path,
+                urllib.urlencode(params)
+            )
         else:
-            return "/%s%s" % (DropboxUtil.API_VERSION, target_path)
+            return "%s%s" % (
+                "/" + str(DropboxUtil.API_VERSION) if prefix else "",
+                target_path
+            )
 
     @staticmethod
-    def build_url(host, target, params=None):
-        return "https://" + host + DropboxUtil.build_path(target, params)
+    def build_url(host, target, prefix=True, params=None):
+        return "https://" + host + DropboxUtil.build_path(target, prefix, params)
 
     @staticmethod
     def split_path(path):

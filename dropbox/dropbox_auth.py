@@ -9,10 +9,10 @@ class DropboxAuth():
         self.app_secret = app_secret
 
     def get_authorize_url(self):
-        return DropboxUtil.build_url(DropboxUtil.WEB_HOST, "/oauth2/authorize", {"response_type": "code", "client_id": self.app_key})
+        return DropboxUtil.build_url(DropboxUtil.WEB_HOST, "/oauth2/authorize", False, {"response_type": "code", "client_id": self.app_key})
 
     def authorize(self, code):
-        url = DropboxUtil.build_url(DropboxUtil.API_HOST, "/oauth2/token")
+        url = DropboxUtil.build_url(DropboxUtil.API_HOST, "/oauth2/token", False)
         params = {
             "grant_type": "authorization_code",
             "code": code,
@@ -21,5 +21,5 @@ class DropboxAuth():
         }
         response = self.connection.post(url, params=params)
         access_token = response["access_token"]
-        user_id = response["uid"]
+        user_id = response["account_id"]
         return access_token, user_id

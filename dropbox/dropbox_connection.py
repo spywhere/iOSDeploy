@@ -29,7 +29,7 @@ class DropboxConnection:
 
         params = params or {}
         headers = headers or {}
-        headers["User-Agent"] = "DrSync/0.1"
+        headers["User-Agent"] = "iOSDeploy/0.1"
 
         if params:
             if body:

@@ -36,7 +36,7 @@ def to_readable_size(filesize):
 def validate_path(client, path):
     try:
         root_data = client.metadata(path)
-        return root_data["is_dir"]
+        return ".tag" in root_data and root_data[".tag"] == "folder"
     except:
         return None
 
@@ -124,7 +124,9 @@ def deploy(client, settings):
                 dump_error("Template file for \"%s\" is not found" % (key))
                 exit(1)
     user_info = client.account_info()
-    public_url = "https://dl.dropboxusercontent.com/u/%s" % (user_info["uid"])
+    public_url = "https://dl.dropboxusercontent.com/u/%s" % (
+        user_info["account_id"]
+    )
     app_name = (
         ipa_info["CFBundleDisplayName"]
         if "CFBundleDisplayName" in ipa_info
@@ -172,15 +174,15 @@ def deploy(client, settings):
 
     print("Generating builds info...")
     public_app_url = "/Public" + app_url
-    app_dir_info = client.metadata(public_app_url)
+    app_dir_info = client.list_folder(public_app_url)
 
     builds = []
-    contents = app_dir_info["contents"]
+    contents = app_dir_info["entries"]
     contents.reverse()
     for entry in contents:
-        if not entry["is_dir"]:
+        if not ".tag" in entry or entry[".tag"] != "folder":
             continue
-        path_name = entry["path"][len(public_app_url) + 1:]
+        path_name = entry["path_display"][len(public_app_url) + 1:]
         if (
             path_name == ipa_info["CFBundleVersion"] and
             os.path.exists(template["new-item"])
@@ -191,7 +193,7 @@ def deploy(client, settings):
 
             build_info["APP_NAME"] = app_name
             build_info["BUNDLE_VERSION"] = ipa_info["CFBundleVersion"]
-            build_info["MODIFIED"] = entry["modified"]
+            build_info["MODIFIED"] = entry["server_modified"]
 
             template_build = MACRO_PATTERN.sub(
                 lambda m: parse_macro(m, ipa_info, build_info),
@@ -210,7 +212,7 @@ def deploy(client, settings):
         else:
             bundle_version_short = ""
             bundle_version = path_name
-            modified_date = entry["modified"]
+            modified_date = entry["server_modified"]
         
         build = {
             "APP_NAME": app_name,
@@ -332,7 +334,7 @@ def run(args):
         try:
             print("Validating access token...")
             client.account_info()
-        except:
+        except Exception as e:
             if setup_mode:
                 print("Access token has expired")
             else:
